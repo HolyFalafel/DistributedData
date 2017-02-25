@@ -3,8 +3,8 @@ import time
 from math import radians, cos, sin, asin, sqrt
 
 # we'll use this dictionary to update the data in the db
-    # key is (file name, row number)
-    record_update_data = {}
+# key is (file name, row number)
+record_update_data = {}
 
 # connection
 def conn_MySQL():
@@ -178,6 +178,10 @@ def main():                      # Define the main function
         prev_rec_next_stop = next_stop
         prev_rec_file_name = file_name
         prev_rec_row_num = row_num
+
+    # update last trip in db
+    # update record_update_data dictionary and then update in db
+    num_of_trip_recs_saved += update_trip_in_db(cur, trip_data[prev_rec_trip_id], time_of_trip)
 
     print "num of db saves: ", num_of_trip_recs_saved
 
