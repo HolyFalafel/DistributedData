@@ -2,6 +2,10 @@ import MySQLdb
 import time
 from math import radians, cos, sin, asin, sqrt
 
+# we'll use this dictionary to update the data in the db
+    # key is (file name, row number)
+    record_update_data = {}
+
 # connection
 def conn_MySQL():
 
@@ -63,8 +67,22 @@ def save_data_in_db(cursor, file_name, row_num, time_delta, time_to_last_stop):
     # print 'query: ', update_query
     cursor.execute(update_query)
 
-# def update_trip_in_db(trip_list):
-    
+def update_trip_in_db(cur, trip_list, time_of_trip):
+    # num of trip records saved in db
+    num_of_trip_recs_saved = 0
+
+    # update record_update_data dictionary and then call the update db function
+    for rec_file_name, rec_row_num, time_to_next_stop, time_to_this_stop in trip_list:
+        # store time to stop (trip time) in trip data tuple
+        time_to_last_stop = time_of_trip - time_to_this_stop
+        record_update_data[(rec_file_name, rec_row_num)] = (time_to_next_stop, time_to_last_stop)
+
+        # now update the db.........
+        save_data_in_db(cur, rec_file_name, rec_row_num, time_to_next_stop, time_to_last_stop)
+
+        num_of_trip_recs_saved += 1
+
+    return num_of_trip_recs_saved
 
 def main():                      # Define the main function
 
@@ -105,12 +123,10 @@ def main():                      # Define the main function
     stop_num = 0
     trip_num = 0
 
-    # num of times saved in db
-    save_trip_time_in_db = 0
+    # num of trip records saved in db
+    num_of_trip_recs_saved = 0
 
-    # we'll use this dictionary to update the data in the db
-    # key is (file name, row number)
-    record_update_data = {}
+
 
     # stops reported records in trip
     # key is trip id
@@ -128,19 +144,8 @@ def main():                      # Define the main function
 
             # avoiding the first trip - which has no data
             if trip_num != 0:
-                # save_trip_time_in_db += update_trip_in_db(trip_data[prev_rec_trip_id])
-
-                # todo: update record_update_data dictionary and then call the update db function
-
-                for rec_file_name, rec_row_num, time_to_next_stop, time_to_this_stop in trip_data[prev_rec_trip_id]:
-                    # todo: store time to stop (trip time) in trip data tuple
-                    time_to_last_stop = time_of_trip - time_to_this_stop
-                    record_update_data[(rec_file_name, rec_row_num)] = (time_to_next_stop, time_to_last_stop)
-
-                    # now update the db.........
-                    save_data_in_db(cur, rec_file_name, rec_row_num, time_to_next_stop, time_to_last_stop)
-
-                    save_trip_time_in_db += 1
+                # update record_update_data dictionary and then update in db
+                num_of_trip_recs_saved += update_trip_in_db(cur, trip_data[prev_rec_trip_id], time_of_trip)
 
             time_delta = time_of_trip = 0
             prev_rec_course_id = course_id
@@ -174,7 +179,7 @@ def main():                      # Define the main function
         prev_rec_file_name = file_name
         prev_rec_row_num = row_num
 
-    print "num of db saves: ", save_trip_time_in_db
+    print "num of db saves: ", num_of_trip_recs_saved
 
     db.commit()
     db.close()
