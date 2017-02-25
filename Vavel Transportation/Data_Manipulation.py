@@ -2,7 +2,6 @@ import MySQLdb
 import time
 from math import radians, cos, sin, asin, sqrt
 
-
 # connection
 def conn_MySQL():
 
@@ -50,6 +49,23 @@ def calc_distance_using_equirectangular(lon1, lat1, lon2, lat2):
     km = r * sqrt(x * x + y * y)
     return km
 
+def save_data_in_db(cursor, file_name, row_num, time_delta, time_to_last_stop):
+    # filename's supposed to be string
+    if isinstance(file_name, int):
+        return
+    # print 'update data: ', file_name, row_num, time_delta, time_to_last_stop
+    update_query = 'UPDATE `vavel-warsaw`.`brigades_data` ' \
+                   'SET ' \
+                   '`timeToNextStop` = %s' \
+                   ', `timeToLastStop` = %s ' \
+                   'WHERE `FileName` = "%s" AND `RowNum` = %s;' % (str(time_delta), str(time_to_last_stop), file_name, str(row_num))
+
+    # print 'query: ', update_query
+    cursor.execute(update_query)
+
+# def update_trip_in_db(trip_list):
+    
+
 def main():                      # Define the main function
 
     db = conn_MySQL()
@@ -61,37 +77,78 @@ def main():                      # Define the main function
     # ==============================================
     # get trips ordered by course (trip) ID and Time
     sql = "SELECT b.Time, UNIX_TIMESTAMP(b.Time) as time_stamp, b.courseIdentifier, " \
-          "b.NearestStop, b.previousStop, " \
+          "b.timetableIdentifier, b.tripID, b.NearestStop, b.previousStop, " \
           "b.previousStopArrivalTime, b.previousStopLeaveTime, b.nextStop, " \
           "b.FileName, b.RowNum " \
           "FROM `vavel-warsaw`.brigades_data b " \
           "where b.TramStatus = 'STOPPED' " \
           "and b.timetableStatus <> 'MISSING' " \
-          "order by b.courseIdentifier, b.Time "
+          "order by b.tripID, b.Time "
     cur.execute(sql)
 
     raw_data = cur.fetchall()
+
     # prev record data
     prev_rec_course_id = -1
+    prev_rec_timetable_id = -1
+    prev_rec_trip_id = -1
     prev_rec_time_stamp = 0
     prev_rec_nearest_stop = 0
     prev_rec_previous_stop = 0
     prev_rec_next_stop = 0
+    prev_rec_file_name = 0
+    prev_rec_row_num = 0
+    # time took from previous stop
+    time_delta = 0
     # time took from trip start
     time_of_trip = 0
-    num_of_stops_counted = 0
-    prev_file_name = 0
-    prev_row_rum = 0
+    stop_num = 0
+    trip_num = 0
 
-    for time_str, time_stamp, course_id, nearest_stop, previous_stop, previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_rum in raw_data:
-        print time_str, time_stamp, course_id, nearest_stop, previous_stop, previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_rum
+    # num of times saved in db
+    save_trip_time_in_db = 0
+
+    # we'll use this dictionary to update the data in the db
+    # key is (file name, row number)
+    record_update_data = {}
+
+    # stops reported records in trip
+    # key is trip id
+    trip_data = {}
+
+    for time_str, time_stamp, course_id, timetable_id, trip_id, nearest_stop, previous_stop, previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_num in raw_data:
 
         # reached a new trip
-        if course_id != prev_rec_course_id:
-            time_of_trip = 0
+        # if course_id != prev_rec_course_id:
+        # if timetable_id != prev_rec_timetable_id:
+        if trip_id != prev_rec_trip_id:
+
+            # adding a list for trip data
+            trip_data[trip_id] = []
+
+            # avoiding the first trip - which has no data
+            if trip_num != 0:
+                # save_trip_time_in_db += update_trip_in_db(trip_data[prev_rec_trip_id])
+
+                # todo: update record_update_data dictionary and then call the update db function
+
+                for rec_file_name, rec_row_num, time_to_next_stop, time_to_this_stop in trip_data[prev_rec_trip_id]:
+                    # todo: store time to stop (trip time) in trip data tuple
+                    time_to_last_stop = time_of_trip - time_to_this_stop
+                    record_update_data[(rec_file_name, rec_row_num)] = (time_to_next_stop, time_to_last_stop)
+
+                    # now update the db.........
+                    save_data_in_db(cur, rec_file_name, rec_row_num, time_to_next_stop, time_to_last_stop)
+
+                    save_trip_time_in_db += 1
+
+            time_delta = time_of_trip = 0
             prev_rec_course_id = course_id
+            prev_rec_timetable_id = timetable_id
+            prev_rec_trip_id = trip_id
             prev_rec_time_stamp = 0
-            num_of_stops_counted = 0
+            stop_num = 0
+            trip_num += 1
         # still on the same trip
         else:
             time_delta = time_stamp - prev_rec_time_stamp
@@ -99,22 +156,27 @@ def main():                      # Define the main function
             # found a wanted transfer between two stops
             # i.e reached to another stop - we want to save time delta and time of trip
             if prev_rec_next_stop == nearest_stop or prev_rec_next_stop == previous_stop:
-                print "time_delta: ", time_delta
-                print "time_of_trip: ", time_of_trip
-                num_of_stops_counted += 1
-                print "num_of_stops_counted: ", num_of_stops_counted
+                # print "time_delta: ", time_delta, ", in minutes: ", time_delta / 60, ":", time_delta % 60
+                # print "time_of_trip: ", time_of_trip, ", in minutes: ", time_of_trip / 60, ":", time_of_trip % 60
+                stop_num += 1
+                print "trip_num: ", trip_num, ", num_of_stops_counted: ", stop_num
                 # todo: consider adding "aerial" distance between stops
 
+            # adding record data - time data for previous stop: rec_id, time to next stop, time to current stop
+            trip_data[trip_id].append((prev_rec_file_name, prev_rec_row_num, time_delta, time_of_trip - time_delta))
+
+        print time_delta / 60, ":", time_delta % 60, time_of_trip / 60, ":", time_of_trip % 60, time_str, time_stamp, course_id, timetable_id, trip_id, nearest_stop, previous_stop, previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_num
         # saving previous record data
         prev_rec_time_stamp = time_stamp
         prev_rec_nearest_stop = nearest_stop
         prev_rec_previous_stop = previous_stop
         prev_rec_next_stop = next_stop
-        prev_file_name = file_name
-        prev_row_rum = row_rum
-        # Working with timestamps in MySQL
-    unix_timestamp_query = 'select UNIX_TIMESTAMP(Time) ' \
-    'from `vavel-warsaw`.brigades_data'
+        prev_rec_file_name = file_name
+        prev_rec_row_num = row_num
 
+    print "num of db saves: ", save_trip_time_in_db
+
+    db.commit()
+    db.close()
 
 main()                           # Invoke the main function
