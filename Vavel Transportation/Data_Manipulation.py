@@ -94,9 +94,17 @@ def main():                      # Define the main function
     # And maybe time to last stop
     # ==============================================
     # get trips ordered by course (trip) ID and Time
+    # sql = "SELECT b.Time, UNIX_TIMESTAMP(b.Time) as time_stamp, b.courseIdentifier, " \
+    #       "b.timetableIdentifier, b.tripID, b.NearestStop, b.previousStop, " \
+    #       "b.previousStopArrivalTime, b.previousStopLeaveTime, b.nextStop, " \
+    #       "b.FileName, b.RowNum " \
+    #       "FROM `vavel-warsaw`.brigades_data b " \
+    #       "where b.TramStatus = 'STOPPED' " \
+    #       "and b.timetableStatus <> 'MISSING' " \
+    #       "order by b.tripID, b.Time "
     sql = "SELECT b.Time, UNIX_TIMESTAMP(b.Time) as time_stamp, b.courseIdentifier, " \
-          "b.timetableIdentifier, b.tripID, b.NearestStop, b.previousStop, " \
-          "b.previousStopArrivalTime, b.previousStopLeaveTime, b.nextStop, " \
+          "b.timetableIdentifier, b.tripID, substring(b.NearestStop, -7, 4) as NearestStop, substring(b.previousStop, -7, 4) as previousStop, " \
+          "b.previousStopArrivalTime, b.previousStopLeaveTime, substring(b.nextStop, -7, 4) as nextStop, " \
           "b.FileName, b.RowNum " \
           "FROM `vavel-warsaw`.brigades_data b " \
           "where b.TramStatus = 'STOPPED' " \
