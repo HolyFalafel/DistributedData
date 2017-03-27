@@ -6,6 +6,12 @@ from math import radians, cos, sin, asin, sqrt
 # key is (file name, row number)
 record_update_data = {}
 
+debug_mode = False
+
+use_only_stopped_trams = True
+# TODO: FFU - select only records from this day
+trips_date = date(2016, 10, 16)
+
 # connection
 def conn_MySQL():
 
@@ -72,7 +78,7 @@ def update_trip_in_db(cur, trip_list, time_of_trip):
     num_of_trip_recs_saved = 0
 
     # update record_update_data dictionary and then call the update db function
-    for rec_file_name, rec_row_num, time_to_next_stop, time_to_this_stop in trip_list:
+    for rec_file_name, rec_row_num, curr_stop, time_to_next_stop, time_to_this_stop in trip_list:
         # store time to stop (trip time) in trip data tuple
         time_to_last_stop = time_of_trip - time_to_this_stop
         record_update_data[(rec_file_name, rec_row_num)] = (time_to_next_stop, time_to_last_stop)
@@ -91,11 +97,7 @@ def main():                      # Define the main function
 
     # db.commit()
 
-    debug_mode = False
 
-    use_only_stopped_trams = True
-    # TODO: FFU - select only records from this day
-    trips_date = date(2016, 10, 16)
 
     stopped_where_clause = ''
     if use_only_stopped_trams:
@@ -142,8 +144,11 @@ def main():                      # Define the main function
     prev_rec_next_stop = 0
     prev_rec_file_name = 0
     prev_rec_row_num = 0
-    # time took from previous stop
+    # time took from previous record
     time_delta = 0
+    # time took from previous stop
+    time_delta_from_stop = 0
+    prev_stop_time_stamp = 0
     # time took from trip start
     time_of_trip = 0
     stop_num = 0
@@ -172,7 +177,7 @@ def main():                      # Define the main function
             if trip_num != 0:
                 print "new trip id: ", trip_id
                 # adding the last record data - here time to last stop is 0, time of trip
-                trip_data[prev_rec_trip_id].append((prev_rec_file_name, prev_rec_row_num, 0, time_of_trip))
+                trip_data[prev_rec_trip_id].append((prev_rec_file_name, prev_rec_row_num, prev_rec_previous_stop, 0, time_of_trip))
                 # update record_update_data dictionary and then update in db
                 num_of_trip_recs_saved += update_trip_in_db(cur, trip_data[prev_rec_trip_id], time_of_trip)
 
@@ -181,11 +186,13 @@ def main():                      # Define the main function
                     print "commiting.."
                     db.commit()
 
-            time_delta = time_of_trip = 0
+            time_delta_from_stop = time_delta = time_of_trip = 0
             prev_rec_course_id = course_id
             prev_rec_timetable_id = timetable_id
             prev_rec_trip_id = trip_id
             prev_rec_time_stamp = 0
+            # saving timestamp for the current stop
+            prev_stop_time_stamp = time_stamp
             stop_num = 0
             trip_num += 1
         # still on the same trip
@@ -198,13 +205,24 @@ def main():                      # Define the main function
                 # print "time_delta: ", time_delta, ", in minutes: ", time_delta / 60, ":", time_delta % 60
                 # print "time_of_trip: ", time_of_trip, ", in minutes: ", time_of_trip / 60, ":", time_of_trip % 60
                 stop_num += 1
+                # calculating the time from the previous stop
+                time_delta_from_stop = time_stamp - prev_stop_time_stamp
+                # saving timestamp for the previous stop
+                prev_stop_time_stamp = prev_rec_time_stamp
                 if debug_mode:
                     print "trip_num: ", trip_num, ", num_of_stops_counted: ", stop_num
                 # todo: consider adding "aerial" distance between stops
 
+            # we're using more tram statuses, ?????update time only when stops change?????
+            if not use_only_stopped_trams:
+                # adding record data - time data for previous stop: rec_id, time to next stop, time to current stop
+                trip_data[trip_id].append(
+                    (prev_rec_file_name, prev_rec_row_num, prev_rec_previous_stop, time_delta, time_of_trip - time_delta))
 
-            # adding record data - time data for previous stop: rec_id, time to next stop, time to current stop
-            trip_data[trip_id].append((prev_rec_file_name, prev_rec_row_num, time_delta, time_of_trip - time_delta))
+            # we're using only stopped trams records
+            if use_only_stopped_trams:
+                # adding record data - time data for previous stop: rec_id, time to next stop, time to current stop
+                trip_data[trip_id].append((prev_rec_file_name, prev_rec_row_num, prev_rec_previous_stop, time_delta_from_stop, time_of_trip - time_delta))
 
         if debug_mode:
             print time_delta / 60, ":", time_delta % 60, time_of_trip / 60, ":", time_of_trip % 60, time_str, time_stamp, course_id, timetable_id, trip_id, nearest_stop, previous_stop, previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_num
@@ -219,7 +237,7 @@ def main():                      # Define the main function
     # update last trip in db
 
     # adding the last record data - here time to last stop is 0, time of trip
-    trip_data[prev_rec_trip_id].append((prev_rec_file_name, prev_rec_row_num, 0, time_of_trip))
+    trip_data[prev_rec_trip_id].append((prev_rec_file_name, prev_rec_row_num, prev_rec_previous_stop, 0, time_of_trip))
     # update record_update_data dictionary and then update in db
     num_of_trip_recs_saved += update_trip_in_db(cur, trip_data[prev_rec_trip_id], time_of_trip)
 
