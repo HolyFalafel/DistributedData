@@ -84,8 +84,8 @@ def update_trip_in_db(cur, trip_list, last_trip_timestamp):
         record_update_data[(rec_file_name, rec_row_num, time_str)] = (time_to_stop, time_to_last_stop)
 
         # in case there's a negative time.. print
-        if time_to_stop < 0 or time_to_last_stop < 0:
-            print "rec_file_name: ", rec_file_name, " rec_row_num: ", rec_row_num, " time_str: ", time_str, " time_to_stop: ", time_to_stop, " time_to_last_stop: ", time_to_last_stop
+        if time_to_stop < 0 or time_to_last_stop <= 0:
+            print "rec_file_name: ", rec_file_name, "\trec_row_num: ", rec_row_num, "\ttime_str: ", time_str, "\ttime_to_stop: ", time_to_stop, "\ttime_to_last_stop: ", time_to_last_stop
 
         # now update the db.........
         save_data_in_db(cur, rec_file_name, rec_row_num, time_str, time_to_stop, time_to_last_stop)
@@ -130,8 +130,8 @@ def main():                      # Define the main function
     # cur.execute(reset_time_sql)
     # db.commit()
 
-    sql = "SELECT b.Time, UNIX_TIMESTAMP(b.Time) as time_stamp, b.courseIdentifier, b.timetableStatus," \
-          "b.timetableIdentifier, b.tripID, b.nextStopDistance, b.TramStatus, substring(b.NearestStop, -7, 4) as NearestStop, substring(b.previousStop, -7, 4) as previousStop, " \
+    sql = "SELECT b.Time, UNIX_TIMESTAMP(b.Time) as time_stamp, b.courseIdentifier, b.courseDirection, b.timetableStatus," \
+          "b.timetableIdentifier, b.tripID, b.nextStopDistance, b.TramStatus, substring(b.NearestStop, -7, 4) as NearestStop, b.NearestStop as NearestStopLong, NearestStopDistance, substring(b.previousStop, -7, 4) as previousStop, " \
           "b.previousStopArrivalTime, UNIX_TIMESTAMP(b.previousStopArrivalTime), b.previousStopLeaveTime, substring(b.nextStop, -7, 4) as nextStop, " \
           "b.FileName, b.RowNum " \
           "FROM `vavel-warsaw`.brigades_data b " \
@@ -175,7 +175,7 @@ def main():                      # Define the main function
     # key is trip id
     trip_data = {}
 
-    for time_str, time_stamp, course_id, timetableStatus, timetable_id, trip_id, nextStopDistance, TramStatus, nearest_stop, previous_stop, previousStopArrivalTime, unix_previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_num in raw_data:
+    for time_str, time_stamp, course_id, course_direction, timetableStatus, timetable_id, trip_id, nextStopDistance, TramStatus, nearest_stop, nearest_stop_long, nearest_stop_distance, previous_stop, previousStopArrivalTime, unix_previousStopArrivalTime, previousStopLeaveTime, next_stop, file_name, row_num in raw_data:
 
         # reached a new trip
         # if course_id != prev_rec_course_id:
@@ -243,7 +243,8 @@ def main():                      # Define the main function
                 # maybe reached the last stop
                 else:
                     # reached the last stop
-                    if timetableStatus == "UNSAFE": # todo: or maybe try to get the STOP NAME and compare with DIRECTION or substr(COURSE_ID)
+                    # if timetableStatus == "UNSAFE": # todo: or maybe try to get the STOP NAME and compare with DIRECTION or substr(COURSE_ID)
+                    if course_direction in nearest_stop_long and nearest_stop_distance < 50: # todo: or maybe try to get the STOP NAME and compare with DIRECTION or substr(COURSE_ID)
                         if prev_nextStopDistance > nextStopDistance: # tram has advanced to next stop
                             set_travel_time_to_curr_stop(time_stamp, list_of_records_to_stop, trip_data[prev_rec_trip_id])
 
@@ -253,7 +254,8 @@ def main():                      # Define the main function
             # maybe reached the last stop
             else:
                 # reached the last stop
-                if timetableStatus == "UNSAFE":
+                # if timetableStatus == "UNSAFE":
+                if course_direction in nearest_stop_long and nearest_stop_distance < 50:  # todo: or maybe try to get the STOP NAME and compare with DIRECTION or substr(COURSE_ID)
                     if prev_nextStopDistance > nextStopDistance:  # tram has advanced to next stop
                         set_travel_time_to_curr_stop(time_stamp, list_of_records_to_stop, trip_data[prev_rec_trip_id])
 
