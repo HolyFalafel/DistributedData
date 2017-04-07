@@ -19,10 +19,11 @@ def conn_MySQL():
 db = conn_MySQL()
 cur = db.cursor()
 
-root = "c:\\"
-dir = "Users\danny\Google Drive\VaVeL\\2016-10-14\\2016-10-14"
+root = "C:\\Users\\danny\\Documents\\VaVeL\\January_Tram_Data\\"
+dir = "2017-01-03"
 fulldir = root + dir
 
+print "loading from path: ", fulldir
 
 directory = os.path.join(root, dir)
 
@@ -31,18 +32,18 @@ directory = os.path.join(root, dir)
 FileName = 0
 Brigade = 1
 FirstLine = 2
-ReceivedTime = 3
+RealTime = 3
 Status = 4
-RawLong = 5
-RawLat = 6
-CleanLong = 7
-CleanLat = 8
+Long = 5
+Lat = 6
+RawLong = 7
+RawLat = 8
 Lines = 9
 LowFloor = 10
 TramStatus = 11
-DelayedBy_Presumed = 12
-NearestStopName_Raw = 13
-Time = 14
+DelayedBy = 12
+DelayAtStop = 13
+PlannedLeaveTime = 14
 NearestStopName = 15
 NearestStopDistance = 16
 NearestStopLong = 17
@@ -58,12 +59,12 @@ nextStopLong = 26
 nextStopLat = 27
 nextStopDistance = 28
 nextStopTimetableVisitTime = 29
-courseDirection_Raw_Presumed = 30
+courseIdentifier = 30
 courseDirection = 31
 timetableIdentifier = 32
 timetableStatus = 33
-Unknown1 = 34
-Unknown2 = 35
+receivedTime = 34
+processingFinishedTime = 35
 
 
 num_of_files = 0
@@ -79,17 +80,17 @@ for root, dirs, files in os.walk(directory):
             FileName_Data = file
             print 'loading file no: ', num_of_files, " name: ", file
 
-            reader = csv.DictReader(csvfile, fieldnames=['Brigade','FirstLine','ReceivedTime','Status',
-                                                         'RawLong','RawLat','CleanLong','CleanLat','Lines','LowFloor',
-                                                         'TramStatus','DelayedBy_Presumed','NearestStopName_Raw','Time',
+            reader = csv.DictReader(csvfile, fieldnames=['Brigade','FirstLine','RealTime','Status',
+                                                         'Long','Lat','RawLong','RawLat','Lines','LowFloor',
+                                                         'TramStatus','DelayedBy','DelayAtStop','PlannedLeaveTime',
                                                          'NearestStopName','NearestStopDistance','NearestStopLong',
                                                          'NearestStopLat','previousStopName','previousStopLong',
                                                          'previousStopLat','previousStopDistance',
                                                          'previousStopArrivalTime','previousStopLeaveTime',
                                                          'nextStopName','nextStopLong','nextStopLat','nextStopDistance',
-                                                         'nextStopTimetableVisitTime','courseDirection_Raw_Presumed',
+                                                         'nextStopTimetableVisitTime','courseIdentifier',
                                                          'courseDirection','timetableIdentifier','timetableStatus',
-                                                         'Unknown1','Unknown2'],
+                                                         'receivedTime','processingFinishedTime'],
                                     delimiter=';')
             rows_in_file = 1
             for row in reader:
@@ -98,18 +99,18 @@ for root, dirs, files in os.walk(directory):
                 # get values
                 Brigade_Data = row['Brigade']
                 FirstLine_Data = row['FirstLine']
-                ReceivedTime_Data = row['ReceivedTime']
+                RealTime_Data = row['RealTime']
                 Status_Data = row['Status']
+                Long_Data = row['Long']
+                Lat_Data = row['Lat']
                 RawLong_Data = row['RawLong']
                 RawLat_Data = row['RawLat']
-                CleanLong_Data = row['CleanLong']
-                CleanLat_Data = row['CleanLat']
                 Lines_Data = row['Lines']
                 LowFloor_Data = row['LowFloor']
                 TramStatus_Data = row['TramStatus']
-                DelayedBy_Presumed_Data = row['DelayedBy_Presumed']
-                NearestStopName_Raw_Data = row['NearestStopName_Raw']
-                Time_Data = row['Time']
+                DelayedBy_Data = row['DelayedBy']
+                DelayAtStop_Data = row['DelayAtStop']
+                PlannedLeaveTime_Data = row['PlannedLeaveTime']
                 NearestStopName_Data = row['NearestStopName']
                 NearestStopDistance_Data = row['NearestStopDistance']
                 NearestStopLong_Data = row['NearestStopLong']
@@ -125,12 +126,12 @@ for root, dirs, files in os.walk(directory):
                 nextStopLat_Data = row['nextStopLat']
                 nextStopDistance_Data = row['nextStopDistance']
                 nextStopTimetableVisitTime_Data = row['nextStopTimetableVisitTime']
-                courseDirection_Raw_Presumed_Data = row['courseDirection_Raw_Presumed']
+                courseIdentifier_Data = row['courseIdentifier']
                 courseDirection_Data = row['courseDirection']
                 timetableIdentifier_Data = row['timetableIdentifier']
                 timetableStatus_Data = row['timetableStatus']
-                Unknown1_Data = row['Unknown1']
-                Unknown2_Data = row['Unknown2']
+                receivedTime_Data = row['receivedTime']
+                processingFinishedTime_Data = row['processingFinishedTime']
 
                 # Fix data
                 if LowFloor_Data == "TRUE":
@@ -145,8 +146,8 @@ for root, dirs, files in os.walk(directory):
                 if previousStopLeaveTime_Data == '':
                     previousStopLeaveTime_Data = None
 
-                if Unknown2_Data == 'null':
-                    Unknown2_Data = None
+                if processingFinishedTime_Data == 'null':
+                    processingFinishedTime_Data = None
 
                 # empty lat/long
                 if nextStopLong_Data == '':
@@ -155,29 +156,29 @@ for root, dirs, files in os.walk(directory):
                 if nextStopLat_Data == '':
                     nextStopLat_Data = 0.0
 
-                record = (FileName_Data,RowNum_Data,Brigade_Data,FirstLine_Data,ReceivedTime_Data,Status_Data,RawLong_Data,
-                          RawLat_Data,CleanLong_Data,CleanLat_Data,Lines_Data,LowFloor_Data,TramStatus_Data,
-                          DelayedBy_Presumed_Data,NearestStopName_Raw_Data,Time_Data,NearestStopName_Data,
+                record = (FileName_Data,RowNum_Data,Brigade_Data,FirstLine_Data,RealTime_Data,Status_Data,Long_Data,
+                          Lat_Data,RawLong_Data,RawLat_Data,Lines_Data,LowFloor_Data,TramStatus_Data,
+                          DelayedBy_Data,DelayAtStop_Data,PlannedLeaveTime_Data,NearestStopName_Data,
                           NearestStopDistance_Data,NearestStopLong_Data,NearestStopLat_Data,previousStopName_Data,
                           previousStopLong_Data,previousStopLat_Data,previousStopDistance_Data,
                           previousStopArrivalTime_Data,previousStopLeaveTime_Data,nextStopName_Data,nextStopLong_Data,
                           nextStopLat_Data,nextStopDistance_Data,nextStopTimetableVisitTime_Data,
-                          courseDirection_Raw_Presumed_Data,courseDirection_Data,timetableIdentifier_Data,
-                          timetableStatus_Data,Unknown1_Data,Unknown2_Data)
+                          courseIdentifier_Data,courseDirection_Data,timetableIdentifier_Data,
+                          timetableStatus_Data,receivedTime_Data,processingFinishedTime_Data)
 
                 #  insert to db
                 # Updating row in DB
                 try:
                     # insert data
                     cur.execute("INSERT INTO `vavel-warsaw`.`brigades_data` "
-                                "(`FileName`,`RowNum`,`Brigade`,`FirstLine`,`ReceivedTime`,`Status`,`RawLong`,"
-                                "`RawLat`,`CleanLong`,`CleanLat`,`Lines`,`LowFloor`,`TramStatus`,"
-                                "`DelayedBy_Presumed`,`NearestStopName_Raw`,`Time`,`NearestStopName`,"
-                                "`NearestStopDistance`,`NearestStopLong`,`NearestStopLat`,`previousStopName`,"
+                                "(`FileName`,`RowNum`,`Brigade`,`FirstLine`,`Time`,`Status`,`Long`,"
+                                "`Lat`,`RawLong`,`RawLat`,`Lines`,`LowFloor`,`TramStatus`,"
+                                "`DelayedBy`,`DelayAtStop`,`PlannedLeaveTime`,`NearestStop`,"
+                                "`NearestStopDistance`,`NearestStopLong`,`NearestStopLat`,`previousStop`,"
                                 "`previousStopLong`,`previousStopLat`,`previousStopDistance`,`previousStopArrivalTime`,"
-                                "`previousStopLeaveTime`,`nextStopName`,`nextStopLong`,`nextStopLat`,"
-                                "`nextStopDistance`,`nextStopTimetableVisitTime`,`courseDirection_Raw_Presumed`,"
-                                "`courseDirection`,`timetableIdentifier`,`timetableStatus`,`Unknown1`,`Unknown2`) "
+                                "`previousStopLeaveTime`,`nextStop`,`nextStopLong`,`nextStopLat`,"
+                                "`nextStopDistance`,`nextStopTimetableVisitTime`,`courseIdentifier`,"
+                                "`courseDirection`,`timetableIdentifier`,`timetableStatus`,`receivedTime`,`processingFinishedTime`) "
                                 "VALUES"
                                 "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
                                 "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s); ",
@@ -194,6 +195,8 @@ for root, dirs, files in os.walk(directory):
 
             # commit after every file
             db.commit()
+
+            print "total rows: ", rows_in_file
 
         csvfile.close()
 

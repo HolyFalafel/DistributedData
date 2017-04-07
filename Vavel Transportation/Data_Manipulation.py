@@ -10,7 +10,7 @@ debug_mode = False
 
 use_only_stopped_trams = False
 # TODO: FFU - select only records from this day
-trips_date = date(2016, 10, 16)
+trips_date = date(2016, 10, 14)
 
 # connection
 def conn_MySQL():
@@ -122,7 +122,8 @@ def main():                      # Define the main function
     # ==============================================
     # get trips ordered by course (trip) ID and Time
     where_clause = "where " + stopped_where_clause + \
-          " b.timetableStatus <> 'MISSING' "
+          " b.timetableStatus <> 'MISSING' and " \
+          " date(b.Time) = '" + str(trips_date) + "' "
 
     # # resetting trip times in db for selected data
     # reset_time_sql = "update `vavel-warsaw`.brigades_data b " \
